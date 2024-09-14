@@ -59,6 +59,24 @@
             position: absolute;
             pointer-events: none;
         }
+        #high-scores {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #000000;
+        }
+        #high-scores .label {
+            font-size: 16px;
+            color: #e74c3c;
+            margin-bottom: 10px;
+        }
+        #high-score-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        #high-score-list li {
+            margin: 5px 0;
+        }
     </style>
 </head>
 <body>
@@ -73,8 +91,12 @@
             <canvas id="next" width="120" height="120"></canvas>
             <div id="scoreboard">
                 <div><span class="label">PUNTOS</span><br><span id="score">000000</span></div>
-                <div><span class="label">LINEAS</span><br><span id="lines">000</span></div>
+                <div><span class="label">LÍNEAS</span><br><span id="lines">000</span></div>
                 <div><span class="label">NIVEL</span><br><span id="level">00</span></div>
+            </div>
+            <div id="high-scores">
+                <div class="label">PUNTUACIONES ALTAS</div>
+                <ol id="high-score-list"></ol>
             </div>
         </div>
     </div>
@@ -104,6 +126,7 @@
         let dropCounter = 0;
         let dropInterval = 1000;
         let lastTime = 0;
+        let paused = false;
 
         const arena = createMatrix(12, 20);
 
@@ -214,6 +237,14 @@
 
             drawMatrix(arena, { x: 0, y: 0 }, context);
             drawMatrix(player.matrix, player.pos, context);
+
+            if (paused) {
+                context.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                context.fillRect(0, 0, canvas.width, canvas.height);
+                context.fillStyle = '#FFFFFF';
+                context.font = '1px Arial';
+                context.fillText('PAUSA', canvas.width / 60 * 5, canvas.height / 60 * 10);
+            }
         }
 
         function drawNextPiece() {
@@ -287,12 +318,35 @@
             player.pos.x = (arena[0].length / 2 | 0) - (player.matrix[0].length / 2 | 0);
 
             if (collide(arena, player)) {
+                // Juego terminado
                 arena.forEach(row => row.fill(0));
+
+                // Pedir nombre de usuario
+                const playerName = prompt("Juego terminado. Por favor, ingresa tu nombre:");
+
+                if (playerName) {
+                    // Obtener puntuaciones altas desde localStorage
+                    let highScores = JSON.parse(localStorage.getItem('highScores')) || [];
+
+                    // Agregar nueva puntuación
+                    highScores.push({ name: playerName, score: player.score });
+
+                    // Ordenar puntuaciones
+                    highScores.sort((a, b) => b.score - a.score);
+
+                    // Mantener solo las 10 mejores
+                    highScores = highScores.slice(0, 10);
+
+                    // Guardar en localStorage
+                    localStorage.setItem('highScores', JSON.stringify(highScores));
+                }
+
                 player.score = 0;
                 player.lines = 0;
                 player.level = 0;
                 dropInterval = 1000;
                 updateScore();
+                updateHighScores();
             }
             drawNextPiece();
         }
@@ -351,6 +405,10 @@
         }
 
         function update(time = 0) {
+            if (paused) {
+                requestAnimationFrame(update);
+                return;
+            }
             const deltaTime = time - lastTime;
             lastTime = time;
 
@@ -370,6 +428,19 @@
             document.getElementById('level').innerText = String(player.level).padStart(2, '0');
         }
 
+        function updateHighScores() {
+            const highScoreList = document.getElementById('high-score-list');
+            highScoreList.innerHTML = '';
+
+            const highScores = JSON.parse(localStorage.getItem('highScores')) || [];
+
+            highScores.forEach(scoreEntry => {
+                const li = document.createElement('li');
+                li.textContent = `${scoreEntry.name}: ${scoreEntry.score}`;
+                highScoreList.appendChild(li);
+            });
+        }
+
         document.addEventListener('keydown', event => {
             if (event.keyCode === 37) {
                 playerMove(-1); // Flecha izquierda
@@ -381,11 +452,19 @@
                 playerRotate(1); // Flecha arriba
             } else if (event.keyCode === 32) {
                 playerHardDrop(); // Espacio
+            } else if (event.keyCode === 81) {
+                playerRotate(-1); // Tecla 'Q' rotación antihoraria
+            } else if (event.keyCode === 87) {
+                playerRotate(1); // Tecla 'W' rotación horaria
+            } else if (event.keyCode === 80) {
+                paused = !paused; // Tecla 'P' para pausar
+                draw();
             }
         });
 
         playerReset();
         updateScore();
+        updateHighScores();
         update();
     </script>
 </body>
