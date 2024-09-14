@@ -1,4 +1,4 @@
-<<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -13,6 +13,7 @@
             font-family: 'Press Start 2P', cursive;
             margin: 0;
             padding: 0;
+            overflow-x: hidden; /* Evitar scroll horizontal */
         }
         h1 {
             margin-top: 20px;
@@ -21,9 +22,10 @@
         }
         #game-container {
             display: flex;
-            flex-direction: column; /* Cambiado para mejor responsividad */
-            align-items: center;
+            align-items: flex-start;
+            justify-content: center;
             margin-top: 20px;
+            flex-wrap: nowrap; /* Evita que los elementos se desplacen hacia abajo */
         }
         #game-wrapper {
             position: relative;
@@ -34,10 +36,11 @@
             box-shadow: 5px 5px 15px rgba(0,0,0,0.3);
         }
         #next-piece {
-            margin-top: 20px;
+            margin-left: 20px;
             text-align: center;
             color: #000000;
             font-size: 14px;
+            flex-shrink: 0; /* Evita que se reduzca más de lo necesario */
         }
         #next {
             border: 4px solid #000000;
@@ -88,32 +91,56 @@
         }
         .controls button {
             font-family: 'Press Start 2P', cursive;
-            font-size: 14px;
+            font-size: 18px;
             padding: 10px;
             margin: 5px;
             width: 60px;
             height: 60px;
+            background-color: #ffffff;
+            border: 2px solid #000000;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+        }
+        .controls button:active {
+            box-shadow: none;
+            transform: translate(2px, 2px);
         }
         /* Responsividad */
         @media (max-width: 768px) {
             #game-container {
-                flex-direction: column;
+                flex-wrap: nowrap; /* Mantiene los elementos en la misma fila */
+                overflow-x: auto; /* Permite desplazamiento horizontal si es necesario */
+            }
+            #game {
+                width: auto;
+                height: auto;
+            }
+            #grid {
+                width: auto;
+                height: auto;
             }
             #next-piece {
-                order: -1;
+                margin-left: 10px;
+                font-size: 12px;
+            }
+            #next {
+                width: auto;
+                height: auto;
+            }
+            #scoreboard {
+                font-size: 12px;
+            }
+            #high-scores {
+                font-size: 12px;
             }
             .controls {
                 display: flex;
                 flex-wrap: wrap;
                 justify-content: center;
             }
-            #game {
-                width: 240px;
-                height: 400px;
-            }
-            #grid {
-                width: 240px;
-                height: 400px;
+            .controls button {
+                width: 50px;
+                height: 50px;
+                font-size: 16px;
             }
             canvas {
                 image-rendering: auto;
@@ -125,12 +152,12 @@
     <h1>TETRIS</h1>
     <div id="game-container">
         <div id="game-wrapper">
-            <canvas id="game" width="360" height="600"></canvas>
-            <canvas id="grid" width="360" height="600"></canvas>
+            <canvas id="game"></canvas>
+            <canvas id="grid"></canvas>
         </div>
         <div id="next-piece">
             <div class="label">SIGUIENTE</div>
-            <canvas id="next" width="120" height="120"></canvas>
+            <canvas id="next"></canvas>
             <div id="scoreboard">
                 <div><span class="label">PUNTOS</span><br><span id="score">000000</span></div>
                 <div><span class="label">LÍNEAS</span><br><span id="lines">000</span></div>
@@ -141,36 +168,51 @@
                 <ol id="high-score-list"></ol>
             </div>
         </div>
-        <!-- Controles táctiles -->
-        <div class="controls">
-            <button id="left">⬅️</button>
-            <button id="rotate-left">🔄️⤸</button>
-            <button id="down">⬇️</button>
-            <button id="rotate-right">🔄️⤹</button>
-            <button id="right">➡️</button>
-            <button id="hard-drop">⏬</button>
-            <button id="pause">⏸️</button>
-        </div>
+    </div>
+    <!-- Controles táctiles -->
+    <div class="controls">
+        <button id="left">⬅️</button>
+        <button id="rotate-left">⤺</button>
+        <button id="down">⬇️</button>
+        <button id="rotate-right">⤻</button>
+        <button id="right">➡️</button>
+        <button id="hard-drop">⏬</button>
+        <button id="pause">⏸️</button>
     </div>
     <script>
         const canvas = document.getElementById('game');
         const context = canvas.getContext('2d');
-        let scale = 30; // Escala por defecto
-
-        // Ajuste de escala para dispositivos móviles
-        if (window.innerWidth <= 768) {
-            canvas.width = 240;
-            canvas.height = 400;
-            scale = 20;
-        }
-        context.scale(scale, scale);
-
-        const nextCanvas = document.getElementById('next');
-        const nextContext = nextCanvas.getContext('2d');
-        nextContext.scale(scale, scale);
 
         const gridCanvas = document.getElementById('grid');
         const gridContext = gridCanvas.getContext('2d');
+
+        const nextCanvas = document.getElementById('next');
+        const nextContext = nextCanvas.getContext('2d');
+
+        let scale = 30; // Escala por defecto
+
+        const gameWidth = 12;
+        const gameHeight = 20;
+
+        // Ajuste de escala para dispositivos móviles
+        function adjustCanvasSize() {
+            const isMobile = window.innerWidth <= 768;
+            const maxCanvasWidth = isMobile ? window.innerWidth * 0.6 : 360;
+            scale = Math.floor(maxCanvasWidth / gameWidth);
+
+            canvas.width = scale * gameWidth;
+            canvas.height = scale * gameHeight;
+            context.scale(scale, scale);
+
+            gridCanvas.width = canvas.width;
+            gridCanvas.height = canvas.height;
+
+            nextCanvas.width = scale * 4;
+            nextCanvas.height = scale * 4;
+            nextContext.scale(scale, scale);
+        }
+
+        adjustCanvasSize();
 
         const colors = [
             null,
@@ -188,7 +230,7 @@
         let lastTime = 0;
         let paused = false;
 
-        const arena = createMatrix(12, 20);
+        const arena = createMatrix(gameWidth, gameHeight);
 
         const player = {
             pos: { x: 0, y: 0 },
@@ -276,17 +318,17 @@
         function drawGrid() {
             gridContext.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
             gridContext.strokeStyle = '#999999';
-            gridContext.lineWidth = 1;
-            for (let x = 0; x <= gridCanvas.width; x += scale) {
+            gridContext.lineWidth = 1 / scale;
+            for (let x = 0; x <= gameWidth; x++) {
                 gridContext.beginPath();
                 gridContext.moveTo(x, 0);
-                gridContext.lineTo(x, gridCanvas.height);
+                gridContext.lineTo(x, gameHeight);
                 gridContext.stroke();
             }
-            for (let y = 0; y <= gridCanvas.height; y += scale) {
+            for (let y = 0; y <= gameHeight; y++) {
                 gridContext.beginPath();
                 gridContext.moveTo(0, y);
-                gridContext.lineTo(gridCanvas.width, y);
+                gridContext.lineTo(gameWidth, y);
                 gridContext.stroke();
             }
         }
@@ -303,7 +345,7 @@
                 context.fillRect(0, 0, canvas.width, canvas.height);
                 context.fillStyle = '#FFFFFF';
                 context.font = '1px Arial';
-                context.fillText('PAUSA', canvas.width / scale / 2 - 1.5, canvas.height / scale / 2);
+                context.fillText('PAUSA', gameWidth / 2 - 1.5, gameHeight / 2);
             }
         }
 
@@ -311,8 +353,8 @@
             nextContext.fillStyle = '#ffffff';
             nextContext.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
 
-            const offsetX = Math.floor((nextCanvas.width / scale - player.nextMatrix[0].length) / 2);
-            const offsetY = Math.floor((nextCanvas.height / scale - player.nextMatrix.length) / 2);
+            const offsetX = Math.floor((nextCanvas.width / scale / 1) - player.nextMatrix[0].length) / 2;
+            const offsetY = Math.floor((nextCanvas.height / scale / 1) - player.nextMatrix.length) / 2;
             drawMatrix(player.nextMatrix, { x: offsetX, y: offsetY }, nextContext);
         }
 
@@ -561,6 +603,17 @@
         document.addEventListener('touchmove', function(event) {
             event.preventDefault();
         }, { passive: false });
+
+        // Ajustar el tamaño del canvas al redimensionar la ventana
+        window.addEventListener('resize', () => {
+            // Restablecer escalas
+            context.setTransform(1, 0, 0, 1, 0, 0);
+            nextContext.setTransform(1, 0, 0, 1, 0, 0);
+            adjustCanvasSize();
+            draw();
+            drawNextPiece();
+            drawGrid();
+        });
 
         playerReset();
         updateScore();
