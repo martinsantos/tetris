@@ -1,8 +1,9 @@
-<!DOCTYPE html>
+<<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <title>Tetris Mejorado en HTML5</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <!-- Importante para dispositivos móviles -->
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
         body {
@@ -20,9 +21,12 @@
         }
         #game-container {
             display: flex;
-            justify-content: center;
-            align-items: flex-start;
+            flex-direction: column; /* Cambiado para mejor responsividad */
+            align-items: center;
             margin-top: 20px;
+        }
+        #game-wrapper {
+            position: relative;
         }
         #game {
             border: 4px solid #000000;
@@ -30,8 +34,8 @@
             box-shadow: 5px 5px 15px rgba(0,0,0,0.3);
         }
         #next-piece {
-            margin-left: 20px;
-            text-align: left;
+            margin-top: 20px;
+            text-align: center;
             color: #000000;
             font-size: 14px;
         }
@@ -77,12 +81,50 @@
         #high-score-list li {
             margin: 5px 0;
         }
+        /* Estilos para los controles táctiles */
+        .controls {
+            display: none; /* Oculto por defecto */
+            margin-top: 20px;
+        }
+        .controls button {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 14px;
+            padding: 10px;
+            margin: 5px;
+            width: 60px;
+            height: 60px;
+        }
+        /* Responsividad */
+        @media (max-width: 768px) {
+            #game-container {
+                flex-direction: column;
+            }
+            #next-piece {
+                order: -1;
+            }
+            .controls {
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            #game {
+                width: 240px;
+                height: 400px;
+            }
+            #grid {
+                width: 240px;
+                height: 400px;
+            }
+            canvas {
+                image-rendering: auto;
+            }
+        }
     </style>
 </head>
 <body>
     <h1>TETRIS</h1>
     <div id="game-container">
-        <div style="position: relative;">
+        <div id="game-wrapper">
             <canvas id="game" width="360" height="600"></canvas>
             <canvas id="grid" width="360" height="600"></canvas>
         </div>
@@ -99,15 +141,33 @@
                 <ol id="high-score-list"></ol>
             </div>
         </div>
+        <!-- Controles táctiles -->
+        <div class="controls">
+            <button id="left">⬅️</button>
+            <button id="rotate-left">🔄️⤸</button>
+            <button id="down">⬇️</button>
+            <button id="rotate-right">🔄️⤹</button>
+            <button id="right">➡️</button>
+            <button id="hard-drop">⏬</button>
+            <button id="pause">⏸️</button>
+        </div>
     </div>
     <script>
         const canvas = document.getElementById('game');
         const context = canvas.getContext('2d');
-        context.scale(30, 30);
+        let scale = 30; // Escala por defecto
+
+        // Ajuste de escala para dispositivos móviles
+        if (window.innerWidth <= 768) {
+            canvas.width = 240;
+            canvas.height = 400;
+            scale = 20;
+        }
+        context.scale(scale, scale);
 
         const nextCanvas = document.getElementById('next');
         const nextContext = nextCanvas.getContext('2d');
-        nextContext.scale(30, 30);
+        nextContext.scale(scale, scale);
 
         const gridCanvas = document.getElementById('grid');
         const gridContext = gridCanvas.getContext('2d');
@@ -217,13 +277,13 @@
             gridContext.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
             gridContext.strokeStyle = '#999999';
             gridContext.lineWidth = 1;
-            for (let x = 0; x <= gridCanvas.width; x += 30) {
+            for (let x = 0; x <= gridCanvas.width; x += scale) {
                 gridContext.beginPath();
                 gridContext.moveTo(x, 0);
                 gridContext.lineTo(x, gridCanvas.height);
                 gridContext.stroke();
             }
-            for (let y = 0; y <= gridCanvas.height; y += 30) {
+            for (let y = 0; y <= gridCanvas.height; y += scale) {
                 gridContext.beginPath();
                 gridContext.moveTo(0, y);
                 gridContext.lineTo(gridCanvas.width, y);
@@ -243,7 +303,7 @@
                 context.fillRect(0, 0, canvas.width, canvas.height);
                 context.fillStyle = '#FFFFFF';
                 context.font = '1px Arial';
-                context.fillText('PAUSA', canvas.width / 60 * 5, canvas.height / 60 * 10);
+                context.fillText('PAUSA', canvas.width / scale / 2 - 1.5, canvas.height / scale / 2);
             }
         }
 
@@ -251,8 +311,8 @@
             nextContext.fillStyle = '#ffffff';
             nextContext.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
 
-            const offsetX = Math.floor((nextCanvas.width / 30 - player.nextMatrix[0].length) / 2);
-            const offsetY = Math.floor((nextCanvas.height / 30 - player.nextMatrix.length) / 2);
+            const offsetX = Math.floor((nextCanvas.width / scale - player.nextMatrix[0].length) / 2);
+            const offsetY = Math.floor((nextCanvas.height / scale - player.nextMatrix.length) / 2);
             drawMatrix(player.nextMatrix, { x: offsetX, y: offsetY }, nextContext);
         }
 
@@ -441,6 +501,17 @@
             });
         }
 
+        // Detectar si es dispositivo móvil
+        function isMobile() {
+            return /Mobi|Android/i.test(navigator.userAgent);
+        }
+
+        // Mostrar controles táctiles si es móvil
+        if (isMobile()) {
+            document.querySelector('.controls').style.display = 'flex';
+        }
+
+        // Eventos de teclado
         document.addEventListener('keydown', event => {
             if (event.keyCode === 37) {
                 playerMove(-1); // Flecha izquierda
@@ -461,6 +532,35 @@
                 draw();
             }
         });
+
+        // Eventos de botones táctiles
+        document.getElementById('left').addEventListener('touchstart', () => {
+            playerMove(-1);
+        });
+        document.getElementById('right').addEventListener('touchstart', () => {
+            playerMove(1);
+        });
+        document.getElementById('down').addEventListener('touchstart', () => {
+            playerDrop();
+        });
+        document.getElementById('rotate-left').addEventListener('touchstart', () => {
+            playerRotate(-1);
+        });
+        document.getElementById('rotate-right').addEventListener('touchstart', () => {
+            playerRotate(1);
+        });
+        document.getElementById('hard-drop').addEventListener('touchstart', () => {
+            playerHardDrop();
+        });
+        document.getElementById('pause').addEventListener('touchstart', () => {
+            paused = !paused;
+            draw();
+        });
+
+        // Prevenir scroll en dispositivos táctiles
+        document.addEventListener('touchmove', function(event) {
+            event.preventDefault();
+        }, { passive: false });
 
         playerReset();
         updateScore();
